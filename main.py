@@ -43,10 +43,14 @@ def main_page():
         return render_template('index.html', message = 'You have been disconnected...')
     print 'id of current user is : ', session['id']
     
+    #Let's get races user is taking part incur = g.db.execute('SELECT id, name, description FROM races')
+    cur = g.db.execute('SELECT id, name, description FROM races WHERE id IN (SELECT race_id FROM userraces WHERE user_id = ?)', [session['id']])
+    userraces = [dict(id=row[0], name=row[1], description=row[2]) for row in cur.fetchall()]
+    
     #Let's fetch all races info
     cur = g.db.execute('SELECT id, name, description FROM races')
-    entries = [dict(id=row[0], name=row[1], description=row[2]) for row in cur.fetchall()]
-    return render_template('chooserace.html', allraces = entries) 
+    allraces = [dict(id=row[0], name=row[1], description=row[2]) for row in cur.fetchall()]
+    return render_template('chooserace.html', allraces = allraces, userraces = userraces) 
     
 #API Routes
 @app.route('/api/register', methods=['POST'])
