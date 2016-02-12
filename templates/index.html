@@ -1,0 +1,111 @@
+
+  {% include "header.html" %}
+  <script type="text/javascript">
+    
+ bootstrap_alert = function() {}
+            bootstrap_alert.warning = function(message) {
+            $('#alert_placeholder').html('<div class="alert alert-danger"><strong>Error!</strong> '+message+'</div>')
+        }
+        
+        function login() {
+            
+
+            var email = $("#inputEmail").val();
+            var password = $("#inputPassword").val();
+            
+
+            if(email == '')
+            {
+                 bootstrap_alert.warning("Email is not filled");
+                return;
+            }
+            
+            if(password == '')
+            {
+                bootstrap_alert.warning("Password is not filled");
+                return;
+            }
+            
+           $.ajax({
+                url: '/api/login',
+                type: 'post',
+                data: "email=" + email + "&password=" + password,
+                success: function(data) {
+                            console.log("Success with post ! : " + data);
+                            if(data != 'ok')
+                            {
+                                bootstrap_alert.warning(data);
+                            }
+                            else
+                            {
+                                //Let's go to the main page
+                                window.location.href = "/main";   
+                            }
+                        }
+            });
+           console.log("Form submitted !");
+        }
+            </script>
+  
+  </head>
+  <body>
+    {% include "modal.html" %}
+    <div class="container">
+
+      <div class="starter-template">
+        <h1>Sailing Race</h1>
+        <p class="lead">Challenge the best sailors all around the world from your desktop !</p>
+      </div>
+
+    </div><!-- /.container -->
+    
+     <div class="container">
+<div class="row">
+    <div class="col-md-3"></div>
+    <div class="col-md-6"
+      <form class="form-signin" >
+        <h2 class="form-signin-heading">Sign in</h2>
+        <label for="inputEmail" class="sr-only">Email address</label>
+        <input type="email" id="inputEmail" class="form-control" placeholder="Email address" required autofocus>
+        <label for="inputPassword" class="sr-only">Password</label>
+        <input type="password" id="inputPassword" class="form-control" placeholder="Password" required>
+        <div class="checkbox">
+          <label>
+            <input type="checkbox" value="remember-me"> Remember me
+          </label>
+        </div>
+        <button class="btn btn-lg btn-success btn-block" onclick="login()" >Sign in</button>
+        <div id = "alert_placeholder"></div>
+        <a href="{{ url_for('register') }}" class="btn btn-lg btn-primary btn-block" type="submit">Register now</a>
+      </form>
+      </div>
+      
+     <!-- <div class="col-md-5"
+      <form class="form-signin">
+        <h2 class="form-signin-heading">Create a new account</h2>
+        <label for="inputRegisterName" class="sr-only">Name</label>
+        <input type="text" id="inputRegisterName" class="form-control" placeholder="Name" required>
+        <label for="inputRegisterEmail" class="sr-only">Email address</label>
+        <input type="email" id="inputRegisterEmail" class="form-control" placeholder="Email address" required>
+        <label for="inputRegisterPassword" class="sr-only">Password</label>
+        <input type="password" id="inputRegisterPassword" class="form-control" placeholder="Password" required>
+        <label for="inputRegisterPasswordConfirm" class="sr-only">Confirm password</label>
+        <input type="password" id="inputRegisterPasswordConfirm" class="form-control" placeholder="Confirm Password" required>
+     
+        <button class="btn btn-lg btn-primary btn-block" type="submit">Register</button>
+      </form>
+      </div>-->
+      
+       <div class="col-md-3"></div>
+</div>
+    </div> <!-- /container -->
+    
+    <!-- Bootstrap core JavaScript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+    <!--<script>window.jQuery || document.write('<script src="../../assets/js/vendor/jquery.min.js"><\/script>')</script>-->
+    <script src="{{url_for('static',filename='js/bootstrap.min.js') }}"></script>
+    
+  </body>
+</html>
