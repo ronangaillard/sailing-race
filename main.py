@@ -42,7 +42,11 @@ def main_page():
     if session.has_key('id') == False:
         return render_template('index.html', message = 'You have been disconnected...')
     print 'id of current user is : ', session['id']
-    return 'in the main part of the app'  
+    
+    #Let's fetch all races info
+    cur = g.db.execute('SELECT id, name, description FROM races')
+    entries = [dict(id=row[0], name=row[1], description=row[2]) for row in cur.fetchall()]
+    return render_template('chooserace.html', allraces = entries) 
     
 #API Routes
 @app.route('/api/register', methods=['POST'])
