@@ -1,9 +1,9 @@
  {% include "header.html" %}
- 
+
 <script src="{{url_for('static',filename='js/jQueryRotate.js') }}"></script>
 
 <script>
-   $(function() {
+    $(function() {
     $( "#slider" ).slider({
         min:0,
         max:359,
@@ -39,9 +39,10 @@
     
     $( "#slider" ).slider("value", {{boatinfo.course}});
     $('#boatimage').rotate({{boatinfo.course}});
+    
+    $('#latitude').html('{{boatinfo.latitude}}');
+    $('#longitude').html('{{boatinfo.longitude}}');
   });
-  
-  
 
 </script>
 
@@ -60,8 +61,11 @@
         <h1>{{ currentrace.name }}</h1>
         <div class="row">
             <div class="col-md-3">
+                <p class="lead">Current position : </p>
+                <p>Longitude : <span id="longitude"></span></p>
+                <p>Latitude : <span id="latitude"></span></p>
                 <p class="lead">Cap</p>
-                <img id="boatimage" src="{{url_for('static',filename='images/boat.png') }}"/>
+                <img id="boatimage" src="{{url_for('static',filename='images/boat.png') }}" />
                 <div id="slider"></div>
                 <div class="angleviewer">
                 </div>

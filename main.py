@@ -58,8 +58,8 @@ def race_play(race_id):
     currentrace = [dict(id=row[0], name=row[1], description=row[2]) for row in cur.fetchall()]
     currentrace = currentrace[0]
     
-    cur = g.db.execute('SELECT boat_id, course FROM userraces WHERE user_id = ? AND race_id = ?', [session['id'], race_id])
-    boatinfo = [dict(boat_id=row[0], course=row[1]) for row in cur.fetchall()]
+    cur = g.db.execute('SELECT boat_id, course, latitude, longitude FROM userraces WHERE user_id = ? AND race_id = ?', [session['id'], race_id])
+    boatinfo = [dict(boat_id=row[0], course=row[1], latitude=row[2], longitude=row[3]) for row in cur.fetchall()]
     boatinfo = boatinfo[0]
     
     return render_template('play.html', currentrace = currentrace, boatinfo = boatinfo)
