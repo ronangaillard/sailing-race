@@ -52,6 +52,20 @@ def main_page():
     allraces = [dict(id=row[0], name=row[1], description=row[2]) for row in cur.fetchall()]
     return render_template('chooserace.html', allraces = allraces, userraces = userraces) 
     
+@app.route('/race/play/<int:race_id>')
+def race_play(race_id):
+    return 'Playing on race : ' + str(race_id)
+    
+@app.route('/race/register/<int:race_id>')
+def race_register(race_id):
+    cur = g.db.execute('SELECT id, name FROM boats')
+    boats = [dict(id=row[0], name=row[1]) for row in cur.fetchall()]
+    
+    return render_template('raceregister.html', race_id = race_id, boats=boats)
+    
+    
+    
+    
 #API Routes
 @app.route('/api/register', methods=['POST'])
 def api_register():
@@ -95,6 +109,17 @@ def api_login():
     print 'User is connected with id : ', id
     session['id'] = id
         
+    return 'ok'
+    
+@app.route('/api/race/register', methods=['POST'])
+def api_race_register():
+    boat_id = request.form['boatid']
+    race_id = request.form['raceid']
+    
+    #penser a verifier que l'utilisateur n'est pas deja enregistre pour cette course
+    g.db.execute('INSERT INTO userraces (user_id, race_id, boat_id) VALUES (?, ?, ?)', [session['id'], race_id, boat_id])
+    g.db.commit()
+  
     return 'ok'
         
 if __name__ == '__main__':

@@ -13,7 +13,7 @@
                  <div class="list-group">
 
                     {% for race in userraces %}
-                    <a href="#" class="list-group-item">
+                    <a href="/race/play/{{ race.id }}" class="list-group-item">
                         <h4 class="list-group-item-heading">{{ race.name }}</h4>
                         <p class="list-group-item-text">{{ race.description }}</p>
                     </a>
@@ -27,7 +27,7 @@
                 <div class="list-group">
 
                     {% for race in allraces %}
-                    <a href="#" class="list-group-item">
+                    <a href="/race/register/{{ race.id }}" class="list-group-item">
                         <h4 class="list-group-item-heading">{{ race.name }}</h4>
                         <p class="list-group-item-text">{{ race.description }}</p>
                     </a>

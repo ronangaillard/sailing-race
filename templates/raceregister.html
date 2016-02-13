@@ -1,0 +1,68 @@
+ {% include "header.html" %}
+<script>
+currentBoat = 1;
+function setCurrentBoat(boatId)
+{
+    currentBoat = boatId;
+    console.log('Setting current boat to : ' + boatId);
+}
+
+function launchGame()
+{
+    console.log('Starting game with boat : ' + currentBoat);
+    $.ajax({
+                url: '/api/race/register',
+                type: 'post',
+                data: "boatid=" + currentBoat + "&raceid=" + {{ race_id }} ,
+                success: function(data) {
+                            console.log("Success with post ! : " + data);
+                            if(data != 'ok')
+                            {
+                                console.log("Error !");
+                                alert("Unknown error...");
+                            }
+                            else
+                            {
+                                //Let's go to the play page
+                                window.location.href = "/race/play/{{ race_id }}";   
+                            }
+                        }
+            });
+}    
+</script>
+    
+</head>
+
+<body>
+    <div class="container">
+
+        <h1>Choose your boat !</h1>
+        <div class="row">
+            <div class="col-md-5">
+                <p class="lead">Available boats</p>
+                
+                 <div class="list-group">
+
+                    {% for boat in boats %}
+                    <a href="#" onclick="setCurrentBoat({{ boat.id }})" class="list-group-item">
+                        <h4 class="list-group-item-heading">{{ boat.name }}</h4>
+                        
+                    </a>
+                    {% endfor %}
+
+                </div>
+            </div>
+            <div class="col-md-7">
+                <h2>Boat Name</h2>
+                <h3>Boat image and description</h3>
+                <button class="btn btn-lg btn-success btn-block" onclick="launchGame()" >Select boat and play !</button>
+
+            </div>
+        </div>
+
+    </div>
+    <!-- /.container -->
+
+</body>
+
+</html>
