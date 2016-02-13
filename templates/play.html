@@ -2,6 +2,8 @@
 
 <script src="{{url_for('static',filename='js/jQueryRotate.js') }}"></script>
 
+<script src="{{url_for('static',filename='OpenLayers-2.13.1/OpenLayers.js') }}"></script>
+
 <script>
     $(function() {
     $( "#slider" ).slider({
@@ -42,9 +44,17 @@
     
     $('#latitude').html('{{boatinfo.latitude}}');
     $('#longitude').html('{{boatinfo.longitude}}');
+    
+    //Map setup
+     map = new OpenLayers.Map("demoMap");
+    map.addLayer(new OpenLayers.Layer.OSM());
+    map.zoomToMaxExtent();
   });
 
 </script>
+
+
+
 
 <style type='text/css'>
     .angleviewer {
@@ -65,7 +75,7 @@
                 <p>Longitude : <span id="longitude"></span></p>
                 <p>Latitude : <span id="latitude"></span></p>
                 <p class="lead">Cap</p>
-                <img id="boatimage" src="{{url_for('static',filename='images/boat.png') }}" />
+                <img id="boatimage" src="{{url_for('static',filename='images/boat.png') }}" class="img-responsive" />
                 <div id="slider"></div>
                 <div class="angleviewer">
                 </div>
@@ -73,6 +83,7 @@
             </div>
             <div class="col-md-9">
                 <h2>Map</h2>
+                <div id="demoMap" style="height:600px"></div>
 
             </div>
         </div>
