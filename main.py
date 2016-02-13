@@ -54,7 +54,15 @@ def main_page():
     
 @app.route('/race/play/<int:race_id>')
 def race_play(race_id):
-    return 'Playing on race : ' + str(race_id)
+    cur = g.db.execute('SELECT id, name, description FROM races WHERE id = ?', [race_id])
+    currentrace = [dict(id=row[0], name=row[1], description=row[2]) for row in cur.fetchall()]
+    currentrace = currentrace[0]
+    
+    cur = g.db.execute('SELECT boat_id, course FROM userraces WHERE user_id = ? AND race_id = ?', [session['id'], race_id])
+    boatinfo = [dict(boat_id=row[0], course=row[1]) for row in cur.fetchall()]
+    boatinfo = boatinfo[0]
+    
+    return render_template('play.html', currentrace = currentrace, boatinfo = boatinfo)
     
 @app.route('/race/register/<int:race_id>')
 def race_register(race_id):
@@ -118,6 +126,14 @@ def api_race_register():
     
     #penser a verifier que l'utilisateur n'est pas deja enregistre pour cette course
     g.db.execute('INSERT INTO userraces (user_id, race_id, boat_id) VALUES (?, ?, ?)', [session['id'], race_id, boat_id])
+    g.db.commit()
+  
+    return 'ok'
+    
+@app.route('/api/race/<int:race_id>/updateboat', methods=['POST'])
+def api_race_updateboat(race_id):
+    course = request.form['course']
+    g.db.execute('UPDATE userraces SET course = ? WHERE race_id = ? AND user_id = ?', [course, race_id, session['id']])
     g.db.commit()
   
     return 'ok'

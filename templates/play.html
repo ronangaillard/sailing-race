@@ -1,0 +1,80 @@
+ {% include "header.html" %}
+ 
+<script src="{{url_for('static',filename='js/jQueryRotate.js') }}"></script>
+
+<script>
+   $(function() {
+    $( "#slider" ).slider({
+        min:0,
+        max:359,
+        value:0,
+        slide: function( event, ui ) {
+            $('.angleviewer').html(ui.value + '&deg;');
+            $('#boatimage').rotate(ui.value);
+        },
+        change: function(event, ui){
+            $('.angleviewer').html(ui.value + '&deg;');
+            console.log('New course : ' + ui.value);
+            
+            //Let's send the new course to the server to save it
+            $.ajax({
+                url: '/api/race/{{currentrace.id}}/updateboat',
+                type: 'post',
+                data: "course=" + ui.value ,
+                success: function(data) {
+                            console.log("Success with post ! : " + data);
+                            if(data != 'ok')
+                            {
+                                console.log("Error !");
+                                alert("Unknown error...");
+                            }
+                            else
+                            {
+                              //Do something... 
+                            }
+                        }
+            });
+        }
+    });
+    
+    $( "#slider" ).slider("value", 85);
+  });
+  
+  
+
+</script>
+
+<style type='text/css'>
+    .angleviewer {
+        margin: 30px 0;
+        font-size: 20px;
+    }
+</style>
+
+</head>
+
+<body>
+    <div class="container">
+
+        <h1>{{ currentrace.name }}</h1>
+        <div class="row">
+            <div class="col-md-3">
+                <p class="lead">Cap</p>
+                <img id="boatimage" src="{{url_for('static',filename='images/boat.png') }}"/>
+                <div id="slider"></div>
+                <div class="angleviewer">
+                </div>
+
+            </div>
+            <div class="col-md-9">
+                <h2>Map</h2>
+
+            </div>
+        </div>
+
+    </div>
+    <!-- /.container -->
+
+</body>
+
+</html>
