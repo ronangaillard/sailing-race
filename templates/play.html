@@ -65,12 +65,12 @@
     
      updateWindInfoAtPosition(lat, lon);
     
-    var zoom           = 12;
+    var zoom           = 18;
     
     $('#longitude').html(lon);
     $('#latitude').html(lat);
     
-    var map = L.map('demoMap').setView([lat, lon], 13);
+    var map = L.map('demoMap').setView([lat, lon], zoom);
 
     L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
         attribution: ''
@@ -79,13 +79,12 @@
     var boatIcon = L.icon({  
             iconUrl: '{{url_for('static',filename='images/boaticon.png') }}',
             iconSize:     [50, 50],
-            iconAnchor:   [0, 0],
+            iconAnchor:   [25, 25],
     });
 
     boatMarker = L.marker([lat, lon], {
         icon: boatIcon
     }).addTo(map).setRotationOrigin([25,25]).setRotationAngle({{boatinfo.course}});
-    
     
     //Loading polars of boat
     // Parse CSV string
