@@ -4,8 +4,16 @@
 
 <script src="{{url_for('static',filename='OpenLayers-2.13.1/OpenLayers.js') }}"></script>
 
+<!-- Leaflet plugin -->
+<link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.css" />
+<script src="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.js"></script>
+<script src="{{url_for('static',filename='OpenLayers-2.13.1/plugins/leaflet.rotatedMarker.js') }}"></script>
+
+
 <script>
+    var boatMarker;
     $(function() {
+        
     $( "#slider" ).slider({
         min:0,
         max:359,
@@ -13,6 +21,7 @@
         slide: function( event, ui ) {
             $('.angleviewer').html(ui.value + '&deg;');
             $('#boatimage').rotate(ui.value);
+            rotateMapBoat(ui.value);
         },
         change: function(event, ui){
             $('.angleviewer').html(ui.value + '&deg;');
@@ -47,13 +56,17 @@
     //Map setup
     var lon            = {{boatinfo.longitude}};
     var lat            = {{boatinfo.latitude}};
-
+    
+    
     var zoom           = 12;
     
     $('#longitude').html(lon);
     $('#latitude').html(lat);
    
-
+    /*var size = new OpenLayers.Size(21,25);
+    var offset = new OpenLayers.Pixel(-(size.w/2), -size.h);
+    var boatIcon = new OpenLayers.Icon('{{url_for('static',filename='images/boaticon.png') }}',size,offset); 
+    
     var fromProjection = new OpenLayers.Projection("EPSG:4326");   // Transform from WGS 1984
     var toProjection   = new OpenLayers.Projection("EPSG:900913"); // to Spherical Mercator Projection
     var position       = new OpenLayers.LonLat(lon, lat);
@@ -66,14 +79,28 @@
 
     var markers = new OpenLayers.Layer.Markers( "Markers" );
     map.addLayer(markers);
-    markers.addMarker(new OpenLayers.Marker(position));
+    
+    var boatMarker = new OpenLayers.Marker(position,boatIcon.clone());
+    markers.addMarker(boatMarker);
 
     map.setCenter(position, zoom);
     
-    console.log('Position of marker : ' + markers.markers[0].lonlat)
+    console.log('Position of marker : ' + markers.markers[0].lonlat);*/
+    
+    var map = L.map('demoMap').setView([lat, lon], 13);
+
+    L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
+        attribution: ''
+    }).addTo(map);
+
+    boatMarker = L.marker([lat, lon]).addTo(map).setRotationAngle({{boatinfo.course}});
     
   });
 
+  function rotateMapBoat(angle)
+  {
+      boatMarker.setRotationAngle(angle);
+  }
 </script>
 
 
