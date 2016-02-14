@@ -9,10 +9,16 @@
 <script src="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.js"></script>
 <script src="{{url_for('static',filename='OpenLayers-2.13.1/plugins/leaflet.rotatedMarker.js') }}"></script>
 
+<!-- CSV Parser -->
+<script src="{{url_for('static',filename='PapaParse-4.1.2/papaparse.min.js') }}"></script>
 
 <script>
     var boatMarker;
+    var windSpeedAtPostion = 0;
+    var windDirectionAtPosition = 0;
     $(function() {
+        
+   
         
     $( "#slider" ).slider({
         min:0,
@@ -57,35 +63,12 @@
     var lon            = {{boatinfo.longitude}};
     var lat            = {{boatinfo.latitude}};
     
+     updateWindInfoAtPosition(lat, lon);
     
     var zoom           = 12;
     
     $('#longitude').html(lon);
     $('#latitude').html(lat);
-   
-    /*var size = new OpenLayers.Size(21,25);
-    var offset = new OpenLayers.Pixel(-(size.w/2), -size.h);
-    var boatIcon = new OpenLayers.Icon('{{url_for('static',filename='images/boaticon.png') }}',size,offset); 
-    
-    var fromProjection = new OpenLayers.Projection("EPSG:4326");   // Transform from WGS 1984
-    var toProjection   = new OpenLayers.Projection("EPSG:900913"); // to Spherical Mercator Projection
-    var position       = new OpenLayers.LonLat(lon, lat);
-    console.log("Position of marker before transform : " + position);
-    position = position.transform( fromProjection, toProjection);
-
-    map = new OpenLayers.Map("demoMap");
-    var mapnik         = new OpenLayers.Layer.OSM();
-    map.addLayer(mapnik);
-
-    var markers = new OpenLayers.Layer.Markers( "Markers" );
-    map.addLayer(markers);
-    
-    var boatMarker = new OpenLayers.Marker(position,boatIcon.clone());
-    markers.addMarker(boatMarker);
-
-    map.setCenter(position, zoom);
-    
-    console.log('Position of marker : ' + markers.markers[0].lonlat);*/
     
     var map = L.map('demoMap').setView([lat, lon], 13);
 
@@ -103,12 +86,35 @@
         icon: boatIcon
     }).addTo(map).setRotationOrigin([25,25]).setRotationAngle({{boatinfo.course}});
     
+    
+    //Loading polars of boat
+    // Parse CSV string
+    var data = Papa.parse('{{url_for('static',filename='boats/polars/boat_Imoca.csv') }}');
+    
   });
 
   function rotateMapBoat(angle)
   {
       boatMarker.setRotationAngle(angle);
   }
+  
+  function updateWindInfoAtPosition(lat, lon)
+  {
+      $.ajax({
+                url: 'http://api.openweathermap.org/data/2.5/weather?lat=' + lat + '&lon=' + lon+'&appid=89c15fa0109218f9c81b1567fd5958cc',
+                type: 'get',
+                success: function(data) {
+                            console.log("Success with post ! wind speed : " + data['wind']['speed']);
+                             windSpeedAtPostion = data['wind']['speed'];
+                             windDirectionAtPosition = data['wind']['deg'];
+                             $('#winddirection').html(windDirectionAtPosition);
+                             $('#windspeed').html(windSpeedAtPostion);
+                            
+                        }
+            });
+  }
+  
+  
 </script>
 
 
@@ -132,6 +138,9 @@
                 <p class="lead">Current position : </p>
                 <p>Longitude : <span id="longitude"></span></p>
                 <p>Latitude : <span id="latitude"></span></p>
+                <p class="lead">Wind info : </p>
+                <p>Speed : <span id="windspeed"></span></p>
+                <p>Direction : <span id="winddirection"></span></p>
                 <p class="lead">Cap</p>
                 <img id="boatimage" src="{{url_for('static',filename='images/boat.png') }}" class="img-responsive" />
                 <div id="slider"></div>
