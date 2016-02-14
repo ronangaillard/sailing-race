@@ -14,8 +14,13 @@
 
 <script>
     var boatMarker;
-    var windSpeedAtPostion = 0;
+    var windSpeedAtPosition = 0;
     var windDirectionAtPosition = 0;
+    var boatCourse =  {{boatinfo.course}};
+    var boatSpeed = 0;
+    var currentPolar;
+    var polarLoaded = false;
+    var weatherLoaded = false;
     $(function() {
         
    
@@ -25,13 +30,18 @@
         max:359,
         value:0,
         slide: function( event, ui ) {
-            $('.angleviewer').html(ui.value + '&deg;');
+            $('.angleviewer').html(ui.value);
             $('#boatimage').rotate(ui.value);
             rotateMapBoat(ui.value);
+            if(polarLoaded && weatherLoaded)
+                getBoatSpeed();
         },
         change: function(event, ui){
-            $('.angleviewer').html(ui.value + '&deg;');
+            $('.angleviewer').html(ui.value);
             console.log('New course : ' + ui.value);
+            boatCourse = ui.value;
+            if(polarLoaded && weatherLoaded)
+                getBoatSpeed();
             
             //Let's send the new course to the server to save it
             $.ajax({
@@ -63,7 +73,7 @@
     var lon            = {{boatinfo.longitude}};
     var lat            = {{boatinfo.latitude}};
     
-     updateWindInfoAtPosition(lat, lon);
+    updateWindInfoAtPosition(lat, lon);
     
     var zoom           = 18;
     
@@ -88,7 +98,20 @@
     
     //Loading polars of boat
     // Parse CSV string
-    var data = Papa.parse('{{url_for('static',filename='boats/polars/boat_Imoca.csv') }}');
+    // Parse local CSV file
+    Papa.parse('{{url_for('static',filename='boats/polars/boat_Imoca.csv') }}', {
+        download: true,
+        complete: function(results) {
+            console.log('Loaded CSV !');
+            polarLoaded = true;
+            console.log("Test : " + results.data[0][0]);
+            currentPolar = results.data;
+            if(weatherLoaded)
+                getBoatSpeed();
+            
+        }
+    });
+    
     
   });
 
@@ -97,17 +120,75 @@
       boatMarker.setRotationAngle(angle);
   }
   
+  function getBoatSpeed()
+  {
+      //console.log("Test : " + currentPolar[2][0]);
+      //console.log('Getting boat speed');
+      
+      var angleToWind = windDirectionAtPosition - boatCourse;
+      if(angleToWind>180)
+        angleToWind -= 360;
+      if(angleToWind < 0)
+        angleToWind = -angleToWind;
+        
+      //console.log("Angle to wind : " + angleToWind);
+      
+      //getting the line for the angle
+      //console.log('Getting line of direction');
+      //Needs to start at 1 because 0 is just text
+      var polarWindLine = 1;
+      while(currentPolar[polarWindLine][0] < angleToWind)
+      {
+          polarWindLine++;
+      }
+      
+      polarWindLine--;
+      //console.log("Line corresponding to the good angle to wind  : " + polarWindLine + ", angle to wind direction is between " + currentPolar[polarWindLine][0]+ ' and ' + currentPolar[polarWindLine+1][0]); 
+      
+      //getting the line for the speed
+      //console.log('Getting line of speed');
+      //Needs to start at 1 because 0 is just text
+      var polarSpeedLine = 1;
+      while(currentPolar[0][polarSpeedLine] < windSpeedAtPosition)
+      {
+          polarSpeedLine++;
+      }
+      
+      polarSpeedLine--;
+     // console.log("Line corresponding to the good speed  : " + polarSpeedLine + ", speed is between " + currentPolar[0][polarSpeedLine]+ ' and ' + currentPolar[0][polarSpeedLine+1]); 
+      
+      //Calculating means to estimate boat spind according to polars
+      var leftWindSpeedMean = (angleToWind - currentPolar[polarWindLine][0]) * currentPolar[polarWindLine + 1][polarSpeedLine] + (currentPolar[polarWindLine + 1][0] - angleToWind) * currentPolar[polarWindLine][polarSpeedLine];
+      leftWindSpeedMean = leftWindSpeedMean / (currentPolar[polarWindLine + 1][0] - currentPolar[polarWindLine][0]);
+      //console.log("Left wind speed mean : " + leftWindSpeedMean);
+      var rightWindSpeedMean = (angleToWind - currentPolar[polarWindLine][0]) * currentPolar[polarWindLine + 1][polarSpeedLine + 1] + (currentPolar[polarWindLine + 1][0] - angleToWind) * currentPolar[polarWindLine][polarSpeedLine + 1];
+      rightWindSpeedMean = rightWindSpeedMean / (currentPolar[polarWindLine + 1][0] - currentPolar[polarWindLine][0]);
+      //console.log("Right wind speed mean : " + rightWindSpeedMean);
+      
+      var finalSpeedMean = (windSpeedAtPosition - currentPolar[0][polarSpeedLine]) * rightWindSpeedMean + (currentPolar[0][polarSpeedLine + 1] - windSpeedAtPosition) * leftWindSpeedMean;
+      finalSpeedMean = finalSpeedMean / (currentPolar[0][polarSpeedLine + 1] - currentPolar[0][polarSpeedLine]);
+      //console.log('Final speed mean : ' + finalSpeedMean);
+      
+      boatSpeed = finalSpeedMean;
+      $(".boatspeed").html(finalSpeedMean.toFixed(2));
+      
+      return finalSpeedMean;
+  }
+  
   function updateWindInfoAtPosition(lat, lon)
   {
       $.ajax({
                 url: 'http://api.openweathermap.org/data/2.5/weather?lat=' + lat + '&lon=' + lon+'&appid=89c15fa0109218f9c81b1567fd5958cc',
                 type: 'get',
                 success: function(data) {
-                            console.log("Success with post ! wind speed : " + data['wind']['speed']);
-                             windSpeedAtPostion = data['wind']['speed'];
+                            console.log("Success with post ! wind speed : " + data['wind']['speed']*1.94384);
+                             windSpeedAtPosition = data['wind']['speed']*1.94384; //1,94384 is to convert to knots
                              windDirectionAtPosition = data['wind']['deg'];
-                             $('#winddirection').html(windDirectionAtPosition);
-                             $('#windspeed').html(windSpeedAtPostion);
+                             $('#winddirection').html(windDirectionAtPosition.toFixed(1));
+                             $('#windspeed').html(windSpeedAtPosition.toFixed(2));
+                             weatherLoaded = true;
+                             if(polarLoaded)
+                                getBoatSpeed();
                             
                         }
             });
@@ -138,13 +219,12 @@
                 <p>Longitude : <span id="longitude"></span></p>
                 <p>Latitude : <span id="latitude"></span></p>
                 <p class="lead">Wind info : </p>
-                <p>Speed : <span id="windspeed"></span></p>
-                <p>Direction : <span id="winddirection"></span></p>
-                <p class="lead">Cap</p>
+                <p>Speed : <span id="windspeed"></span> kn</p>
+                <p>Direction : <span id="winddirection"> </span>&deg;</p>
+                <p class="lead">Cap : <span class="angleviewer"> </span>&deg;</p>
                 <img id="boatimage" src="{{url_for('static',filename='images/boat.png') }}" class="img-responsive" />
                 <div id="slider"></div>
-                <div class="angleviewer">
-                </div>
+                <p class="lead">Boat speed : <span class="boatspeed"></span> kn</p>
 
             </div>
             <div class="col-md-9">
