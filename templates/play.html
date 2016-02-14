@@ -92,8 +92,16 @@
     L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
         attribution: ''
     }).addTo(map);
+    
+    var boatIcon = L.icon({  
+            iconUrl: '{{url_for('static',filename='images/boaticon.png') }}',
+            iconSize:     [50, 50],
+            iconAnchor:   [0, 0],
+    });
 
-    boatMarker = L.marker([lat, lon]).addTo(map).setRotationAngle({{boatinfo.course}});
+    boatMarker = L.marker([lat, lon], {
+        icon: boatIcon
+    }).addTo(map).setRotationOrigin([25,25]).setRotationAngle({{boatinfo.course}});
     
   });
 
