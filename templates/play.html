@@ -211,8 +211,15 @@
       {
         if(typeof hourMarkers[i] == 'undefined')
         {
-            console.log('futurePositions[' + i + '][' + boatCourse+ '] : ' + futurePositions[i][boatCourse]);
-            hourMarkers[i] = L.marker(futurePositions[i][boatCourse]).addTo(map);
+             var hourIcon = L.icon({  
+                iconUrl: '{{url_for('static',filename='images/markers/') }}'+futurePositionsTime[i]+'h.png',
+                iconSize:     [40, 67],
+                iconAnchor:   [20, 67],
+            });
+
+            hourMarkers[i] = L.marker(futurePositions[i][boatCourse], {
+        icon: hourIcon
+    }).addTo(map);
         }
         else
         {
