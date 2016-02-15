@@ -22,6 +22,9 @@
     var polarLoaded = false;
     var weatherLoaded = false;
     
+    var futurePositionsTime = [1, 2, 3, 6, 12, 24];
+    var futurePositions = new Array();
+    
     var lon            = {{boatinfo.longitude}};
     var lat            = {{boatinfo.latitude}};
     
@@ -44,7 +47,8 @@
             rotateMapBoat(ui.value);
             if(polarLoaded && weatherLoaded)
             {
-                getBoatSpeed();
+                boatSpeed = getBoatSpeed(boatCourse);
+                $(".boatspeed").html(boatSpeed.toFixed(2));
                 //updateNextExtimatedDistanceMarkers();
             }
         },
@@ -54,7 +58,8 @@
             boatCourse = ui.value;
             if(polarLoaded && weatherLoaded)
             {
-                getBoatSpeed();
+                boatSpeed = getBoatSpeed(boatCourse);
+                $(".boatspeed").html(boatSpeed.toFixed(2));
                 updateNextExtimatedDistanceMarkers();
             }
             
@@ -88,7 +93,7 @@
     
     updateWindInfoAtPosition(lat, lon);
     
-    var zoom           = 11;
+    var zoom           = 10;
     
     $('#longitude').html(lon);
     $('#latitude').html(lat);
@@ -121,8 +126,11 @@
             polarLoaded = true;
             if(weatherLoaded)
             {
-                getBoatSpeed();
+                computeFuturePositions();
+                boatSpeed = getBoatSpeed(boatCourse);
+                $(".boatspeed").html(boatSpeed.toFixed(2));
                 updateNextExtimatedDistanceMarkers();
+                drawOnMapPolars();
             }
             
         }
@@ -144,74 +152,85 @@
     return angle * ( 180/Math.PI );
   }
   
-  function updateNextExtimatedDistanceMarkers()
+  function getFuturePosition(heading, time) //time in hours, heading in degrees
   {
-      /*
-      Ld = Latitude de départ, Gd = Longitude de départ, C = cap suivi, d = distance parcourue (en
-      Milles nautiques), La = Latitude d'arrivée, Ga = Longitude d'arrivée.
-      
-      Lm = (Ld + La) / 2
-
-      La = Ld + ((d cos C ) / 60)
-
-      Ga = Gd + ((d sin C) / cos Lm)
-
-      Formules recopiées sur le livre "Les calculatrices" par Roger Florent - Editions du Pen Duick,
-      1981 - sans aucune garantie d'exactitude ;-)
-      */
-      
-      /*
-      Formula:	lat2 = asin( sin lat1 ⋅ cos δ + cos lat1 ⋅ sin δ ⋅ cos θ )
-        lon2 = lon1 + atan2( sin θ ⋅ sin δ ⋅ cos lat1, cos δ − sin lat1 ⋅ sin lat2 )
-        where	lat is latitude, lon is longitude, θ is the bearing (clockwise from north), δ is the angular distance d/R; d being the distance travelled, R the earth’s radius
-        JavaScript:
-        (all angles 
-        in radians)
-        var lat2 = Math.asin( Math.sin(lat1)*Math.cos(d/R) +
-                            Math.cos(lat1)*Math.sin(d/R)*Math.cos(brng) );
-        var lon2 = lon1 + Math.atan2(Math.sin(brng)*Math.sin(d/R)*Math.cos(lat1),
-                                Math.cos(d/R)-Math.sin(lat1)*Math.sin(lat2));
-                         
-                         */
       //Let's compute the position of the boat in one hour
       var R = 6371000; //Earth Radius   
-      var distanceToBeTraveled = boatSpeed*1852; //Distance to be traveled in an hour (1852converts to m/h)
-      console.log('Distance to be traveled in miles : ' + distanceToBeTraveled);
-      console.log('Math.cos(toRadians(boatCourse)) = ' + Math.cos(toRadians(boatCourse)));
-      console.log('Course : ' + boatCourse);
-      var Lm = (lat + lon)/2;
-      console.log('Lm = ' + Lm +', distance : ' + distanceToBeTraveled);
-      //var lat2 = lat + distanceToBeTraveled * Math.cos(toRadians(boatCourse)) / 60 ;
-      //var lon2 = lon + distanceToBeTraveled * Math.sin(toRadians(boatCourse)) / (60 * Math.cos(toRadians(Lm)));
+      var distanceToBeTraveled = getBoatSpeed(heading)*1852*time; //Distance to be traveled in an hour (1852converts to m/h)
       
-      var lat2 = toDegrees( Math.asin( Math.sin(toRadians(lat))*Math.cos(distanceToBeTraveled/R) +
-                    Math.cos(toRadians(lat))*Math.sin(distanceToBeTraveled/R)*Math.cos(toRadians(boatCourse)) ));
-                    
-      var lon2 = lon + toDegrees(Math.atan2(Math.sin(toRadians(boatCourse))*Math.sin(distanceToBeTraveled/R)*Math.cos(toRadians(lat)),
-                    Math.cos(distanceToBeTraveled/R)-Math.sin(toRadians(lat))*Math.sin(toRadians(lat2))));
+      var Lm = (lat + lon)/2;
 
-      console.log('Position in one hour : lat : ' + lat2 + ', lon : ' + lon2);
+      var lat2 = toDegrees( Math.asin( Math.sin(toRadians(lat))*Math.cos(distanceToBeTraveled/R) +
+                    Math.cos(toRadians(lat))*Math.sin(distanceToBeTraveled/R)*Math.cos(toRadians(heading)) ));
+                    
+      var lon2 = lon + toDegrees(Math.atan2(Math.sin(toRadians(heading))*Math.sin(distanceToBeTraveled/R)*Math.cos(toRadians(lat)),
+                    Math.cos(distanceToBeTraveled/R)-Math.sin(toRadians(lat))*Math.sin(toRadians(lat2))));
+      
+      return new L.LatLng(lat2, lon2);
+  }
+  
+  function updateNextExtimatedDistanceMarkers()
+  {
+      
       
       if(typeof oneHourMarker == 'undefined')
       {
-          oneHourMarker = L.marker([lat2, lon2]).addTo(map);
+          oneHourMarker = L.marker(getFuturePosition(boatCourse, 1)).addTo(map);
       }
       else
       {
-          oneHourMarker.setLatLng(new L.LatLng(lat2, lon2));
+          oneHourMarker.setLatLng(getFuturePosition(boatCourse, 1));
       }
   }
   
-  function getBoatSpeed()
+  function computeFuturePositions()
   {
-      console.log('Getting boat speed ! ');
-      
+      console.log('Computing all future positions');
+      for(j = 0; j < futurePositionsTime.length; j++)
+      {
+          futurePositions[j] = new Array();
+        for(i = 0; i < 360; i++)
+        {
+            futurePositions[j][i] = getFuturePosition(i, futurePositionsTime[j]);
+        }
+        
+        futurePositions[j][360] = futurePositions[j][0];
+      }
+      console.log('done!');
+  }
+  
+  function drawOnMapPolars()
+  {
+     
+ 
+
+        var threeHoursMapPolar = new L.Polyline(futurePositions[2], {
+        color: 'red',
+        weight: 2,
+        opacity: 0.5,
+        smoothFactor: 1
+
+        });
+        threeHoursMapPolar.addTo(map);
+        
+        var sixHoursMapPolar = new L.Polyline(futurePositions[3], {
+        color: 'orange',
+        weight: 2,
+        opacity: 0.5,
+        smoothFactor: 1
+
+        });
+        sixHoursMapPolar.addTo(map);
+  }
+  
+  function getBoatSpeed(heading)
+  {
       if(typeof currentPolar == 'undefined')
       {
           console.log('FATAL ERROR : calling getboatSpeed but polar is undefined...');
           return;
       }
-      var angleToWind = windDirectionAtPosition - boatCourse;
+      var angleToWind = windDirectionAtPosition - heading;
       while(angleToWind<0 || angleToWind > 180)
       {
         if(angleToWind>180)
@@ -224,7 +243,6 @@
       
       //Needs to start at 1 because 0 is just text
       var polarWindLine = 1;
-      console.log('angleToWind : ' + angleToWind);
       while(currentPolar[polarWindLine][0] < angleToWind)
       {
           polarWindLine++;
@@ -232,7 +250,6 @@
       }
       
       polarWindLine--;
-      console.log('polarWindLine : ' + polarWindLine);
      
       //getting the line for the speed
      //Needs to start at 1 because 0 is just text
@@ -243,7 +260,6 @@
       }
       
       polarSpeedLine--;
-      console.log('polarSpeedLine : ' + polarSpeedLine);
       
       //Calculating means to estimate boat spind according to polars
       var leftWindSpeedMean = (angleToWind - currentPolar[polarWindLine][0]) * currentPolar[polarWindLine + 1][polarSpeedLine] + (currentPolar[polarWindLine + 1][0] - angleToWind) * currentPolar[polarWindLine][polarSpeedLine];
@@ -256,8 +272,8 @@
       finalSpeedMean = finalSpeedMean / (currentPolar[0][polarSpeedLine + 1] - currentPolar[0][polarSpeedLine]);
 
       
-      boatSpeed = finalSpeedMean;
-      $(".boatspeed").html(finalSpeedMean.toFixed(2));
+      //boatSpeed = finalSpeedMean;
+      //$(".boatspeed").html(finalSpeedMean.toFixed(2));
       
       return finalSpeedMean;
   }
@@ -276,15 +292,17 @@
                              weatherLoaded = true;
                              if(polarLoaded)
                              {
-                                getBoatSpeed()
+                                computeFuturePositions();
+                                boatSpeed = getBoatSpeed(boatCourse);
+                                $(".boatspeed").html(boatSpeed.toFixed(2));
                                 updateNextExtimatedDistanceMarkers();
+                                drawOnMapPolars();
                              }
                             
                         }
             });
   }
-  
-  
+
 </script>
 
 
