@@ -30,8 +30,13 @@
     
     var map;
     
+    var computedAllFuturePositions = false;
+    
+    var boatSpeeds; //Contains speed at each direction
+    
     //Markers to show where boat will be in given times if it keeps its course
-    var oneHourMarker;
+    var hourMarkers = [];
+    var hourMarkerLine;
     
     $(function() {
         
@@ -47,7 +52,7 @@
             rotateMapBoat(ui.value);
             if(polarLoaded && weatherLoaded)
             {
-                boatSpeed = getBoatSpeed(boatCourse);
+                boatSpeed = boatSpeeds[boatCourse];
                 $(".boatspeed").html(boatSpeed.toFixed(2));
                 //updateNextExtimatedDistanceMarkers();
             }
@@ -58,7 +63,7 @@
             boatCourse = ui.value;
             if(polarLoaded && weatherLoaded)
             {
-                boatSpeed = getBoatSpeed(boatCourse);
+                boatSpeed = boatSpeeds[boatCourse];
                 $(".boatspeed").html(boatSpeed.toFixed(2));
                 updateNextExtimatedDistanceMarkers();
             }
@@ -120,17 +125,15 @@
     Papa.parse('{{url_for('static',filename='boats/polars/boat_Imoca.csv') }}', {
         download: true,
         complete: function(results) {
-            console.log('Loaded CSV !');
-            console.log("Test : " + results.data[0][0]);
             currentPolar = results.data;
             polarLoaded = true;
+            console.log('Loaded polars !');
             if(weatherLoaded)
             {
                 computeFuturePositions();
-                boatSpeed = getBoatSpeed(boatCourse);
+                boatSpeed = boatSpeeds[boatCourse];
                 $(".boatspeed").html(boatSpeed.toFixed(2));
-                updateNextExtimatedDistanceMarkers();
-                drawOnMapPolars();
+                
             }
             
         }
@@ -154,49 +157,115 @@
   
   function getFuturePosition(heading, time) //time in hours, heading in degrees
   {
+      if(typeof boatSpeeds == 'undefined')
+      {
+          boatSpeeds = [];
+          
+          for(i = 0; i < 360; i++)
+          {
+              boatSpeeds[i] = getBoatSpeed(i);
+          }
+          
+          console.log('boat speed  = ' + boatSpeeds);
+      }
+      
+      
+      
+      //console.log('heading ' + heading);
       //Let's compute the position of the boat in one hour
       var R = 6371000; //Earth Radius   
-      var distanceToBeTraveled = getBoatSpeed(heading)*1852*time; //Distance to be traveled in an hour (1852converts to m/h)
+      //console.log('heading : ' + heading + ', time : ' + time + ', boatSpeed : ' + boatSpeeds[heading]);
+      var distanceToBeTraveled = boatSpeeds[heading]*1852*time; //Distance to be traveled in an hour (1852converts to m/h)
       
       var Lm = (lat + lon)/2;
+      
+      //console.log('lm : ' + Lm);
+      //console.log('distance : ' + distanceToBeTraveled);
 
       var lat2 = toDegrees( Math.asin( Math.sin(toRadians(lat))*Math.cos(distanceToBeTraveled/R) +
                     Math.cos(toRadians(lat))*Math.sin(distanceToBeTraveled/R)*Math.cos(toRadians(heading)) ));
                     
       var lon2 = lon + toDegrees(Math.atan2(Math.sin(toRadians(heading))*Math.sin(distanceToBeTraveled/R)*Math.cos(toRadians(lat)),
                     Math.cos(distanceToBeTraveled/R)-Math.sin(toRadians(lat))*Math.sin(toRadians(lat2))));
+                    
+     if(typeof lat2 == 'undefined')
+        console.log('FATAL ERROR, lat2 is undefined for heading : ' +heading + 'and time : ' + time);
+        
+     if(typeof lon2 == 'undefined')
+        console.log('FATAL ERROR, lon2 is undefined for heading : ' +heading + 'and time : ' + time);
+        
+        var position = new L.LatLng(lat2, lon2);
+        
+         if(typeof position == 'undefined')
+        console.log('FATAL ERROR, position is undefined for heading : ' +heading + 'and time : ' + time);
       
-      return new L.LatLng(lat2, lon2);
+      return position;
   }
   
   function updateNextExtimatedDistanceMarkers()
   {
+       var lineCoordinates = [];
+      lineCoordinates[0] = new L.LatLng(lat, lon);
       
-      
-      if(typeof oneHourMarker == 'undefined')
+      for(i = 0; i < futurePositionsTime.length; i++)
       {
-          oneHourMarker = L.marker(getFuturePosition(boatCourse, 1)).addTo(map);
+        if(typeof hourMarkers[i] == 'undefined')
+        {
+            console.log('futurePositions[' + i + '][' + boatCourse+ '] : ' + futurePositions[i][boatCourse]);
+            hourMarkers[i] = L.marker(futurePositions[i][boatCourse]).addTo(map);
+        }
+        else
+        {
+            hourMarkers[i].setLatLng(futurePositions[i][boatCourse]);
+        }
+        
+        lineCoordinates[i+1] = futurePositions[i][boatCourse];
       }
-      else
+      
+     
+      console.log('a');
+      
+      if(typeof hourMarkerLine == 'undefined')
       {
-          oneHourMarker.setLatLng(getFuturePosition(boatCourse, 1));
+        hourMarkerLine = new L.Polyline(lineCoordinates, {
+            color: 'white',
+            weight: 1,
+            opacity: 1,
+            smoothFactor: 1
+
+            });
+            hourMarkerLine.addTo(map);
+      }
+      else{
+          hourMarkerLine.setLatLngs(lineCoordinates);
       }
   }
   
-  function computeFuturePositions()
+  function computeFuturePositions() //Computes ALL future positions
   {
       console.log('Computing all future positions');
-      for(j = 0; j < futurePositionsTime.length; j++)
+      for(var j = 0; j < futurePositionsTime.length; j++)
       {
           futurePositions[j] = new Array();
-        for(i = 0; i < 360; i++)
+        for(var i = 0; i < 360; i++)
         {
+            
             futurePositions[j][i] = getFuturePosition(i, futurePositionsTime[j]);
+            if(typeof futurePositions[j][i] == 'undefined')
+            {
+                console.log('FATAL ERROR, futurePositions['+ j +'][' + i + '] is undefined...');
+            }
         }
         
         futurePositions[j][360] = futurePositions[j][0];
       }
       console.log('done!');
+      computedAllFuturePositions = true;
+      
+      console.log('Update next estimated');
+      updateNextExtimatedDistanceMarkers();
+      console.log('draw on map polars');
+      drawOnMapPolars();
   }
   
   function drawOnMapPolars()
@@ -284,19 +353,18 @@
                 url: 'http://api.openweathermap.org/data/2.5/weather?lat=' + lat + '&lon=' + lon+'&appid=89c15fa0109218f9c81b1567fd5958cc',
                 type: 'get',
                 success: function(data) {
-                            console.log("Success with post ! wind speed : " + data['wind']['speed']*1.94384);
                              windSpeedAtPosition = data['wind']['speed']*1.94384; //1,94384 is to convert to knots
                              windDirectionAtPosition = data['wind']['deg'];
                              $('#winddirection').html(windDirectionAtPosition.toFixed(1));
                              $('#windspeed').html(windSpeedAtPosition.toFixed(2));
+                             console.log('Loaded weather data !');
                              weatherLoaded = true;
                              if(polarLoaded)
                              {
                                 computeFuturePositions();
-                                boatSpeed = getBoatSpeed(boatCourse);
+                                boatSpeed = boatSpeeds[boatCourse];
                                 $(".boatspeed").html(boatSpeed.toFixed(2));
-                                updateNextExtimatedDistanceMarkers();
-                                drawOnMapPolars();
+                               
                              }
                             
                         }
