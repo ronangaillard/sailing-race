@@ -1,0 +1,52 @@
+body {
+/*    padding-top: 50px;
+    margin-top: 50px;
+    margin-bottom: 50px;*/
+    background: none;
+    height: 100%;
+}
+
+.full {
+  background: url(/static/images/background.jpg) no-repeat center center fixed; 
+  -webkit-background-size: cover;
+  -moz-background-size: cover;
+  -o-background-size: cover;
+  background-size: cover;
+  height: 100%;
+}
+
+.title {
+  padding: 40px 15px;
+  /*text-align: center;*/
+  font-size: 70px;
+  font-family: Verdana, Arial, Helvetica, sans-serif;
+  
+}
+
+form > .row {
+    margin-top: 10px;
+}
+
+.vertical-center {
+  min-height: 100%;  /* Fallback for browsers do NOT support vh unit */
+  min-height: 100vh; /* These two lines are counted as one :-)       */
+
+  display: flex;
+  align-items: center;
+}
+
+
+.container-table {
+    position: fixed;
+    top:0;
+    /*left : 86px;
+    width: calc(100% - 86px);*/
+    display: table;
+    height: 100%;
+    width:100%;
+    
+}
+.vertical-center-row {
+    display: table-cell;
+    vertical-align: middle;
+}
