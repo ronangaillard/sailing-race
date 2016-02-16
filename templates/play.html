@@ -12,6 +12,12 @@
 <!-- CSV Parser -->
 <script src="{{url_for('static',filename='PapaParse-4.1.2/papaparse.min.js') }}"></script>
 
+<!-- Leaflet plugin viewer -->
+<script src="{{url_for('static',filename='Leaflet-OWM/leaflet-openweathermap.js') }}"></script>
+<link rel="stylesheet" href="{{url_for('static',filename='Leaflet-OWM/leaflet-openweathermap.css') }}" />
+
+<!-- My code -->
+
 <script>
     var boatMarker;
     var windSpeedAtPosition = 0;
@@ -34,6 +40,9 @@
     
     var boatSpeeds; //Contains speed at each direction
     
+    var windMarkers = [];
+    var windIcon;
+    
     //Markers to show where boat will be in given times if it keeps its course
     var hourMarkers = [];
     var hourMarkerLine;
@@ -54,7 +63,7 @@
             {
                 boatSpeed = boatSpeeds[boatCourse];
                 $(".boatspeed").html(boatSpeed.toFixed(2));
-                //updateNextExtimatedDistanceMarkers();
+                updateNextExtimatedDistanceMarkers();
             }
         },
         change: function(event, ui){
@@ -139,6 +148,8 @@
         }
     });
     
+    showWindOnMap();
+    
     
   });
 
@@ -165,8 +176,6 @@
           {
               boatSpeeds[i] = getBoatSpeed(i);
           }
-          
-          console.log('boat speed  = ' + boatSpeeds);
       }
       
       
@@ -181,17 +190,27 @@
       
       //console.log('lm : ' + Lm);
       //console.log('distance : ' + distanceToBeTraveled);
-
-      var lat2 = toDegrees( Math.asin( Math.sin(toRadians(lat))*Math.cos(distanceToBeTraveled/R) +
-                    Math.cos(toRadians(lat))*Math.sin(distanceToBeTraveled/R)*Math.cos(toRadians(heading)) ));
+      
+      var lat2;
+      var lon2;
+      
+      if(boatSpeeds[heading] == 0)
+      {
+          lat2 = lat;
+          lon2 = lon;
+      }
+      else{
+        lat2 = toDegrees( Math.asin( Math.sin(toRadians(lat))*Math.cos(distanceToBeTraveled/R) +
+                        Math.cos(toRadians(lat))*Math.sin(distanceToBeTraveled/R)*Math.cos(toRadians(heading)) ));
+                        
+        lon2 = lon + toDegrees(Math.atan2(Math.sin(toRadians(heading))*Math.sin(distanceToBeTraveled/R)*Math.cos(toRadians(lat)),
+                        Math.cos(distanceToBeTraveled/R)-Math.sin(toRadians(lat))*Math.sin(toRadians(lat2))));
+      }
                     
-      var lon2 = lon + toDegrees(Math.atan2(Math.sin(toRadians(heading))*Math.sin(distanceToBeTraveled/R)*Math.cos(toRadians(lat)),
-                    Math.cos(distanceToBeTraveled/R)-Math.sin(toRadians(lat))*Math.sin(toRadians(lat2))));
-                    
-     if(typeof lat2 == 'undefined')
-        console.log('FATAL ERROR, lat2 is undefined for heading : ' +heading + 'and time : ' + time);
+     if(isNaN(lat2))
+        console.log('FATAL ERROR, lat2 is undefined for heading : ' +heading + 'and time : ' + time +', boatspeed is ' + boatSpeeds[heading]);
         
-     if(typeof lon2 == 'undefined')
+     if(isNaN(lon2))
         console.log('FATAL ERROR, lon2 is undefined for heading : ' +heading + 'and time : ' + time);
         
         var position = new L.LatLng(lat2, lon2);
@@ -228,9 +247,6 @@
         
         lineCoordinates[i+1] = futurePositions[i][boatCourse];
       }
-      
-     
-      console.log('a');
       
       if(typeof hourMarkerLine == 'undefined')
       {
@@ -269,9 +285,7 @@
       console.log('done!');
       computedAllFuturePositions = true;
       
-      console.log('Update next estimated');
       updateNextExtimatedDistanceMarkers();
-      console.log('draw on map polars');
       drawOnMapPolars();
   }
   
@@ -314,6 +328,9 @@
         if(angleToWind < 0)
             angleToWind = -angleToWind;
       }
+      
+      if(angleToWind == 0)
+        return 0;
         
       //getting the line for the angle
       
@@ -336,6 +353,8 @@
       }
       
       polarSpeedLine--;
+      
+      
       
       //Calculating means to estimate boat spind according to polars
       var leftWindSpeedMean = (angleToWind - currentPolar[polarWindLine][0]) * currentPolar[polarWindLine + 1][polarSpeedLine] + (currentPolar[polarWindLine + 1][0] - angleToWind) * currentPolar[polarWindLine][polarSpeedLine];
@@ -377,6 +396,128 @@
                         }
             });
   }
+  
+    function showWindOnMap()
+    {
+        var osm = new OpenLayers.Layer.OSM();
+
+        var windrose = L.OWM.current({intervall: 15, imageLoadingUrl: '/static/images/owmloading.gif', minZoom: 4,
+			appId: '89c15fa0109218f9c81b1567fd5958cc', markerFunction: myWindroseMarker, popup: false, clusterSize: 50,
+   			imageLoadingBgUrl: 'http://openweathermap.org/img/w0/iwind.png' });
+               
+        windrose.on('owmlayeradd', windroseAdded, windrose); // Add an event listener to get informed when windrose layer is ready
+       
+        var baseMaps = { "OSM Standard": osm };
+        var overlayMaps = { "windRose": windrose};
+        var layerControl = L.control.layers(baseMaps, overlayMaps).addTo(map);
+    }
+    
+        /**
+     * Example function to replace leaflet-openweathermap's builtin marker by a wind rose symbol.
+     * Some helper functions and an event listener are needed, too. See below.
+     */
+    function myWindroseMarker(data) {
+        var content = '<canvas id="id_' + data.id + '" width="50" height="50"></canvas>';
+        var icon = L.divIcon({html: content, iconSize: [50,50], className: 'owm-div-windrose'});
+        return L.marker([data.coord.lat, data.coord.lon], {icon: icon, clickable: false});
+    }
+    
+        /**
+     * Helper function for replacing leaflet-openweathermap's builtin marker by a wind rose symbol.
+     * This function is called event-driven when the layer and its markers are added. Now we can draw all marker symbols.
+     * The this-context has to be the windrose layer.
+     */
+    function windroseAdded(e) {
+        for (var i in this._markers) {
+            var m = this._markers[i];
+            var cv = document.getElementById('id_' + m.options.owmId);
+            for (var j in this._cache._cachedData.list) {
+                var station = this._cache._cachedData.list[j];
+                if (station.id == m.options.owmId) {
+                    myWindroseDrawCanvas(station, this);
+                }
+            }
+        }
+    }
+    
+        /**
+     * Helper function for replacing leaflet-openweathermap's builtin marker by a wind rose symbol.
+     * This function draws the canvas of one marker symbol once it is available in the DOM.
+     */
+    function myWindroseDrawCanvas(data, owm) {
+
+        var canvas = document.getElementById('id_' + data.id);
+        canvas.title = data.name;
+        var angle = 0;
+        var speed = 0;
+        var gust = 0;
+        if (typeof data.wind != 'undefined') {
+            if (typeof data.wind.speed != 'undefined') {
+                canvas.title += ', ' + data.wind.speed + ' m/s';
+                canvas.title += ', ' + owm._windMsToBft(data.wind.speed) + ' BFT';
+                speed = data.wind.speed;
+            }
+            if (typeof data.wind.deg != 'undefined') {
+                //canvas.title += ', ' + data.wind.deg + 'Â°';
+                canvas.title += ', ' + owm._directions[(data.wind.deg/22.5).toFixed(0)];
+                angle = data.wind.deg;
+            }
+            if (typeof data.wind.gust != 'undefined') {
+                gust = data.wind.gust;
+            }
+        }
+        if (canvas.getContext && speed > 0) {
+            var red = 0;
+            var green = 0;
+            if (speed <= 10) {
+                green = 10*speed+155;
+                red = 255*speed/10.0;
+            } else {
+                red = 255;
+                green = 255-(255*(Math.min(speed, 21)-10)/11.0);
+            }
+            var ctx = canvas.getContext('2d');
+            ctx.translate(25, 25);
+            ctx.rotate(angle*Math.PI/180);
+            ctx.fillStyle = 'rgb(' + Math.floor(red) + ',' + Math.floor(green) + ',' + 0 + ')';
+            ctx.beginPath();
+            ctx.moveTo(-15, -25);
+            ctx.lineTo(0, -10);
+            ctx.lineTo(15, -25);
+            ctx.lineTo(0, 25);
+            ctx.fill();
+
+            // draw inner arrow for gust
+            if (gust > 0 && gust != speed) {
+                if (gust <= 10) {
+                    green = 10*gust+155;
+                    red = 255*gust/10.0;
+                } else {
+                    red = 255;
+                    green = 255-(255*(Math.min(gust, 21)-10)/11.0);
+                }
+                canvas.title += ', gust ' + data.wind.gust + ' m/s';
+                canvas.title += ', ' + owm._windMsToBft(data.wind.gust) + ' BFT';
+                ctx.fillStyle = 'rgb(' + Math.floor(red) + ',' + Math.floor(green) + ',' + 0 + ')';
+                ctx.beginPath();
+                ctx.moveTo(-15, -25);
+                ctx.lineTo(0, -10);
+                //ctx.lineTo(15, -25);
+                ctx.lineTo(0, 25);
+                ctx.fill();
+            }
+        } else {
+            canvas.innerHTML = '<div>'
+                    + (typeof data.wind != 'undefined' && typeof data.wind.deg != 'undefined' ? data.wind.deg + 'Â°' : '')
+                    + '</div>';
+        }
+    }
+
+    
+    function sign(number)
+    {
+        return number?number<0?-1:1:0;
+    }
 
 </script>
 
